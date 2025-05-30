@@ -1,0 +1,168 @@
+<!-- Save this as templates/adminpanel.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin Panel - Suggestions</title>
+  <style>
+    body {
+      background-color: #e68e0c;
+      background-image: url('/static/bg.png');
+      background-repeat: repeat;
+      background-size: 100px;
+      font-family: sans-serif;
+      padding: 80px 5%;
+      margin: 0;
+    }
+    h1 { text-align: center; }
+    table {
+      width: 100%;
+      background: white;
+      border-collapse: collapse;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    th, td {
+      padding: 12px;
+      border: 1px solid #ddd;
+    }
+    th {
+      background: #e74c3c;
+      color: white;
+    }
+    button {
+      padding: 6px 12px;
+      margin-right: 5px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button.approve {
+      background-color: #27ae60;
+      color: white;
+    }
+    button.reject {
+      background-color: #c0392b;
+      color: white;
+    }
+    form {
+      background: white;
+      padding: 16px;
+      border-radius: 8px;
+      margin: 40px 0;
+      box-shadow: 0 0 5px rgba(0,0,0,0.1);
+    }
+    input, select {
+      margin: 6px 0;
+      padding: 8px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    button[type="submit"] {
+      background-color: #2980b9;
+      color: white;
+      border: none;
+      padding: 10px;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+  </style>
+  <script>
+    async function handleAction(suggestionId, action, button) {
+      button.disabled = true;  // disable button to prevent double-click
+      const comment = "";  // no comment, just send empty string
+      try {
+        const response = await fetch(`/api/admin/suggestions/${suggestionId}/${action}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ admin_comment: comment || '' })
+        });
+        const result = await response.json();
+        alert(result.message);
+        location.reload(); // reload page to update table
+      } catch (error) {
+        alert('Error occurred, please try again.');
+        button.disabled = false; // re-enable if error
+      }
+    }
+
+    async function handleAddProduct(event) {
+      event.preventDefault();
+      const form = event.target;
+      const data = {
+        product_name: form.product_name.value,
+        brand_name: form.brand_name.value,
+        category_name: form.category_name.value,
+        affiliation_status: form.affiliation_status.value
+      };
+      try {
+        const res = await fetch('/api/admin/products', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        const result = await res.json();
+        alert(result.message || result.error);
+        if (res.ok) location.reload();
+      } catch (err) {
+        alert("Error adding product.");
+      }
+    }
+  </script>
+</head>
+<body>
+  <h1>Admin Panel - Suggestions</h1>
+
+  <h2>Add New Product</h2>
+  <form id="add-product-form" onsubmit="handleAddProduct(event)">
+    <input type="text" name="product_name" placeholder="Product Name" required><br>
+    <input type="text" name="brand_name" placeholder="Brand Name" required><br>
+    <input type="text" name="category_name" placeholder="Category Name" required><br>
+    <select name="affiliation_status" required>
+      <option value="" disabled selected>Select Affiliation</option>
+      <option value="Israeli">Israeli</option>
+      <option value="Local">Local</option>
+    </select><br>
+    <button type="submit">Add Product</button>
+  </form>
+
+  {% if suggestions %}
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Type</th>
+          <th>Target Product</th>
+          <th>Suggested Name</th>
+          <th>Reason</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for suggestion in suggestions %}
+        <tr>
+          <td>{{ suggestion.suggestion_id }}</td>
+          <td>{{ suggestion.suggestion_type }}</td>
+          <td>{{ suggestion.target_product_name }}</td>
+          <td>{{ suggestion.suggested_product_name or '-' }}</td>
+          <td>{{ suggestion.reason }}</td>
+          <td>{{ suggestion.status | capitalize }}</td>
+          <td>
+            {% if suggestion.status == 'pending' %}
+              <button class="approve" onclick="handleAction({{ suggestion.suggestion_id }}, 'approve', this)">Approve</button>
+              <button class="reject" onclick="handleAction({{ suggestion.suggestion_id }}, 'reject', this)">Reject</button>
+            {% else %}
+              {{ suggestion.status | capitalize }}
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No suggestions found.</p>
+  {% endif %}
+</body>
+</html>
